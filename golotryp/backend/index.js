@@ -2,10 +2,15 @@ const express = require("express")
 const mysql = require("mysql2")
 const cors = require("cors")
 
+const bcrypt = require("bcryptjs")
+const jwt = require("jsonwebtoken")
+
 const app = express()
 
 app.use(cors())
 app.use(express.json())
+
+const SECRET_KEY = "golotryp_secret_key"
 
 const db = mysql.createConnection({
   host: "localhost",
@@ -77,6 +82,103 @@ app.get("/productos", (req, res) => {
     })
 
     res.json(Object.values(productsMap))
+  })
+})
+
+app.post("/pedidos", (req, res) => {
+  const { carrito, total, formaPago } = req.body
+
+  const pedidoQuery = `
+    INSERT INTO pedidos (total)
+    VALUES (?)
+  `
+
+  db.query(pedidoQuery, [total], (err, pedidoResult) => {
+    if (err) {
+      return res.status(500).json(err)
+    }
+
+    const pedidoId = pedidoResult.insertId
+
+    const detalles = carrito.map((item) => [
+      pedidoId,
+      item.productId,
+      item.presentationId,
+      item.quantity,
+      item.price,
+      item.price * item.quantity,
+    ])
+
+    const detalleQuery = `
+      INSERT INTO detalle_pedido
+      (
+        pedido_id,
+        producto_id,
+        presentacion_id,
+        cantidad,
+        precio_unitario,
+        subtotal
+      )
+      VALUES ?
+    `
+
+    db.query(detalleQuery, [detalles], (err) => {
+      if (err) {
+        return res.status(500).json(err)
+      }
+
+      const estadoPago =
+        formaPago === "efectivo"
+          ? "pendiente"
+          : "pagado"
+
+      const pagoQuery = `
+        INSERT INTO pagos
+        (
+          pedido_id,
+          forma_pago,
+          estado_pago,
+          monto
+        )
+        VALUES (?, ?, ?, ?)
+      `
+
+      db.query(
+        pagoQuery,
+        [
+          pedidoId,
+          formaPago,
+          estadoPago,
+          total,
+        ],
+        (err) => {
+          if (err) {
+            return res.status(500).json(err)
+          }
+
+          res.json({
+            mensaje: "Pedido creado correctamente",
+            pedidoId,
+          })
+        }
+      )
+    })
+  })
+})
+
+app.get("/pedidos", (req, res) => {
+  const query = `
+    SELECT *
+    FROM pedidos
+    ORDER BY fecha DESC
+  `
+
+  db.query(query, (err, results) => {
+    if (err) {
+      return res.status(500).json(err)
+    }
+
+    res.json(results)
   })
 })
 

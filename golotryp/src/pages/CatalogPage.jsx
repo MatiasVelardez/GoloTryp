@@ -4,7 +4,15 @@ import Navbar from "../components/Navbar"
 
 function CatalogPage() {
   const [products, setProducts] = useState([])
-  const [cart, setCart] = useState([])
+  const [cart, setCart] = useState(() => {
+  const savedCart = localStorage.getItem("golotryp_cart")
+
+    if (savedCart) {
+      return JSON.parse(savedCart)
+    }
+
+    return []
+  })
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("Todas")
@@ -16,6 +24,13 @@ function CatalogPage() {
       .then((data) => setProducts(data))
       .catch((error) => console.log("Error al traer productos:", error))
   }, [])
+
+  useEffect(() => {
+    localStorage.setItem(
+      "golotryp_cart",
+      JSON.stringify(cart)
+    )
+  }, [cart])
 
   const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0)
 
@@ -105,6 +120,38 @@ function CatalogPage() {
 
     setCart(updatedCart)
   }
+
+  const finalizarCompra = () => {
+  if (cart.length === 0) {
+    alert("El carrito está vacío")
+    return
+  }
+
+  const pedido = {
+    carrito: cart,
+    total: totalPrice,
+    formaPago: "efectivo", // por ahora fijo, después hacemos selector
+  }
+
+  fetch("http://localhost:3000/pedidos", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(pedido),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      alert(`Pedido creado correctamente. ID: ${data.pedidoId}`)
+      setCart([])
+      localStorage.removeItem("golotryp_cart")
+      setIsCartOpen(false)
+    })
+    .catch((error) => {
+      console.log("Error al crear pedido:", error)
+      alert("Hubo un error al crear el pedido")
+    })
+}
 
   const handleSelectCategory = (category) => {
     setSelectedCategory(category)
@@ -312,7 +359,7 @@ function CatalogPage() {
                   <p>${totalPrice}</p>
                 </div>
 
-                <button className="mt-4 w-full rounded-lg bg-blue-900 py-2 font-semibold text-white transition hover:bg-blue-800">
+                <button onClick={finalizarCompra}className="mt-4 w-full rounded-lg bg-blue-900 py-2 font-semibold text-white transition hover:bg-blue-800">
                   Finalizar compra
                 </button>
               </div>
