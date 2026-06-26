@@ -1,6 +1,9 @@
 const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
-const db = require("../db/database")
+const {
+  crearUsuario,
+  buscarUsuarioPorEmail,
+} = require("../models/usuarios.model")
 
 const SECRET_KEY = "golotryp_secret_key"
 
@@ -10,23 +13,22 @@ const registrarUsuario = async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    const query = `
-      INSERT INTO usuarios
-      (nombre, apellido, email, password, telefono, direccion)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `
+    const nuevoUsuario = {
+      nombre,
+      apellido,
+      email,
+      password: hashedPassword,
+      telefono,
+      direccion,
+    }
 
-    db.query(
-      query,
-      [nombre, apellido, email, hashedPassword, telefono, direccion],
-      (err) => {
-        if (err) return res.status(500).json(err)
+    crearUsuario(nuevoUsuario, (err) => {
+      if (err) return res.status(500).json(err)
 
-        res.json({
-          mensaje: "Usuario registrado correctamente",
-        })
-      }
-    )
+      res.json({
+        mensaje: "Usuario registrado correctamente",
+      })
+    })
   } catch (error) {
     res.status(500).json(error)
   }
@@ -35,13 +37,7 @@ const registrarUsuario = async (req, res) => {
 const iniciarSesion = (req, res) => {
   const { email, password } = req.body
 
-  const query = `
-    SELECT *
-    FROM usuarios
-    WHERE email = ? AND activo = 1
-  `
-
-  db.query(query, [email], async (err, results) => {
+  buscarUsuarioPorEmail(email, async (err, results) => {
     if (err) return res.status(500).json(err)
 
     if (results.length === 0) {
@@ -79,6 +75,7 @@ const iniciarSesion = (req, res) => {
         email: usuario.email,
         telefono: usuario.telefono,
         direccion: usuario.direccion,
+        barrio: usuario.barrio,
         rol: usuario.rol,
       },
     })
