@@ -1,8 +1,10 @@
 const express = require("express")
-const { obtenerProductos } = require("../controllers/productos.controller")
+const {
+  listarProductos,
+} = require("../controllers/productos.controller")
 
 const router = express.Router()
 
-router.get("/", obtenerProductos)
+router.get("/", listarProductos)
 
 module.exports = router
