@@ -1,8 +1,10 @@
 const express = require("express")
-const { crearPedido } = require("../controllers/pedidos.controller")
+const {
+  registrarPedido,
+} = require("../controllers/pedidos.controller")
 
 const router = express.Router()
 
-router.post("/", crearPedido)
+router.post("/", registrarPedido)
 
 module.exports = router
